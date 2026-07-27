@@ -221,7 +221,7 @@
           </div>
         </div>
         <div class="hint" id="hintText">← → / A D to steer &nbsp;·&nbsp; ↓ / S to brake &nbsp;·&nbsp; ↑ / W for extra gas<br>
-        tap a rider to hit the road — weave the switchbacks, dodge the pack, roll into the city before the clock burns out.</div>
+        tap a rider to hit the road — grab your rider's glowing charm for a turbo, smash the pack out of the way, and roll into the city before the clock burns out.</div>
       </div>
 
       <button class="startBtn hidden" id="startBtn">🏁 Kickstart</button>
@@ -396,12 +396,14 @@
   let score=0, combo=0, comboFlashT=0;
 
   const THEMES = {
-    largo:     { jacket:'#161311', trim:'#d9c9a3', patch:'#a02424', accent:'#c4602c', name:'LARGO' },
-    cesar:     { jacket:'#12181f', trim:'#cfe0ec', patch:'#1a4a7a', accent:'#3a8fd8', name:'CESAR' },
-    kathy:     { jacket:'#1c1015', trim:'#f0d0e2', patch:'#7a1a5a', accent:'#e0459a', name:'KATHY' },
-    alejandro: { jacket:'#201a10', trim:'#e6d6ae', patch:'#7a5210', accent:'#e0a030', name:'ALEJANDRO' }
+    largo:     { jacket:'#161311', trim:'#d9c9a3', patch:'#a02424', accent:'#c4602c', name:'LARGO', icon:'leaf',  powerName:'HERBAL BOOST' },
+    cesar:     { jacket:'#12181f', trim:'#cfe0ec', patch:'#1a4a7a', accent:'#3a8fd8', name:'CESAR', icon:'cymbal', powerName:'CYMBAL CRASH' },
+    kathy:     { jacket:'#1c1015', trim:'#f0d0e2', patch:'#7a1a5a', accent:'#e0459a', name:'KATHY', icon:'mic',    powerName:'MIC DROP' },
+    alejandro: { jacket:'#201a10', trim:'#e6d6ae', patch:'#7a5210', accent:'#e0a030', name:'ALEJANDRO', icon:'guitar', powerName:'SOLO BLAST' }
   };
   let selectedChar = 'largo';
+  let powerups=[];
+  let turboT=0, turboMaxT=3.2, turboFlashT=0;
   let finishCelebration=false;
   let finishScreenShown=false;
   let finishTime=0;
@@ -446,9 +448,23 @@
         hitW=0.38;
         color=TRUCK_COLORS[Math.floor(Math.random()*TRUCK_COLORS.length)];
       }
-      list.push({type, baseX:lane, x:lane, z, speed:MAX_SPEED*speedMul, weave, hitW, color, phase:Math.random()*10, finished:false});
+      list.push({type, baseX:lane, x:lane, z, speed:MAX_SPEED*speedMul, origSpeed:MAX_SPEED*speedMul, weave, hitW, color, phase:Math.random()*10, finished:false, airborne:false, airTime:0, airDuration:0, knockVX:0, spinAngle:0});
     }
     list.sort((a,b) => a.z - b.z);
+    return list;
+  }
+
+  function generatePowerups(){
+    const list=[];
+    const num = 16;
+    const segmentSize = TRACK_LEN / num;
+    for(let i=0;i<num;i++){
+      let z = (i*segmentSize) + segmentSize*0.5 + (Math.random()-0.5)*segmentSize*0.4;
+      z = Math.max(900, Math.min(TRACK_LEN-900, z));
+      const lane = (Math.random()<0.5?-1:1) * (0.15+Math.random()*0.5);
+      list.push({z, x:lane, taken:false, bobPhase:Math.random()*10});
+    }
+    list.sort((a,b)=>a.z-b.z);
     return list;
   }
 
@@ -456,9 +472,10 @@
     position=0; speed=0; playerX=0; t=0;
     timeLeft=75; lastQuarter=0; collideCooldown=0; shakeT=0; boostParticles=[]; crashParticles=[]; flyingObjects=[]; finishParticles=[];
     toasts=[]; totalCrashes=0; finishCelebration=false; finishScreenShown=false; finishTime=0; gameEnded=false; celebrationActive=false; celebrationTimer=0; bikeStopped=false;
-    score=0; combo=0; comboFlashT=0;
+    score=0; combo=0; comboFlashT=0; turboT=0; turboFlashT=0;
     if(stopBikeInterval){ clearInterval(stopBikeInterval); stopBikeInterval=null; }
     traffic = generateTraffic();
+    powerups = generatePowerups();
     document.getElementById('hudTime').parentElement.classList.remove('danger');
     resultLine.classList.add('hidden');
     resultSub.classList.add('hidden');
@@ -938,6 +955,30 @@
       ctx.fill();
     });
 
+    if(turboT>0){
+      const accent = THEMES[selectedChar].accent;
+      const pulse = 0.6+0.4*Math.sin(t*18);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1,turboT/turboMaxT)*0.5;
+      for(let i=0;i<3;i++){
+        const trailLen = (60+i*40)*scaleUp*pulse;
+        const grad = ctx.createLinearGradient(cx,cy+40*scaleUp,cx,cy+40*scaleUp+trailLen);
+        grad.addColorStop(0, hexToRgba(accent,0.55));
+        grad.addColorStop(1, hexToRgba(accent,0));
+        ctx.fillStyle=grad;
+        ctx.beginPath();
+        ctx.ellipse(cx+(i-1)*26*scaleUp, cy+40*scaleUp+trailLen*0.5, 14*scaleUp, trailLen*0.5, 0,0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = 0.12*pulse*Math.min(1,turboT/0.5);
+      ctx.fillStyle = accent;
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+
     crashParticles.forEach(p=>{
       ctx.globalAlpha=Math.max(0,p.life/15);
       ctx.fillStyle=p.color;
@@ -1243,6 +1284,103 @@
     ctx.restore();
   }
 
+  function hexToRgba(hex, a){
+    const v = parseInt(hex.slice(1),16);
+    const r=(v>>16)&255, g=(v>>8)&255, b=v&255;
+    return 'rgba('+r+','+g+','+b+','+a+')';
+  }
+
+  function drawPowerupIcon(seg, p){
+    const s = seg.p1.screen;
+    if(s.w<=1) return;
+    const u = s.w;
+    const bob = Math.sin((t+p.bobPhase)*3)*u*0.12;
+    const x = s.x + p.x*s.w;
+    const y = s.y - u*0.85 + bob;
+    const scale = Math.min(46, u*0.55);
+    if(scale<2) return;
+    const accent = THEMES[selectedChar].accent;
+    const icon = THEMES[selectedChar].icon;
+
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(Math.sin((t+p.bobPhase)*1.4)*0.14);
+
+    const glow = ctx.createRadialGradient(0,0,0,0,0,scale*1.9);
+    glow.addColorStop(0, hexToRgba(accent,0.55));
+    glow.addColorStop(1, hexToRgba(accent,0));
+    ctx.fillStyle=glow;
+    ctx.beginPath(); ctx.arc(0,0,scale*1.9,0,Math.PI*2); ctx.fill();
+
+    // platform ring under the icon
+    ctx.fillStyle=hexToRgba(accent,0.3);
+    ctx.beginPath(); ctx.ellipse(0,scale*0.75,scale*0.9,scale*0.22,0,0,Math.PI*2); ctx.fill();
+
+    ctx.scale(scale/26, scale/26);
+
+    if(icon==='leaf'){
+      ctx.fillStyle='#3fae4a';
+      ctx.strokeStyle='#215c28'; ctx.lineWidth=1.2;
+      function leaflet(rot, len, wid){
+        ctx.save(); ctx.rotate(rot);
+        ctx.beginPath();
+        ctx.moveTo(0,4);
+        ctx.quadraticCurveTo(wid, -len*0.35, 0, -len);
+        ctx.quadraticCurveTo(-wid, -len*0.35, 0, 4);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0,2); ctx.lineTo(0,-len*0.85); ctx.stroke();
+        ctx.restore();
+      }
+      leaflet(0, 24, 7);
+      leaflet(0.45, 19, 6);
+      leaflet(-0.45, 19, 6);
+      leaflet(0.9, 13, 5);
+      leaflet(-0.9, 13, 5);
+      ctx.fillStyle='#215c28';
+      ctx.fillRect(-1.5,2,3,7);
+    } else if(icon==='cymbal'){
+      ctx.fillStyle='#e8c04a';
+      ctx.beginPath(); ctx.ellipse(0,0,22,8,0,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#8a6a1a'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.ellipse(0,0,15,5.5,0,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0,0,8,3,0,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#fff2c0';
+      ctx.beginPath(); ctx.ellipse(-6,-3,4,1.4,0.3,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#5a4410';
+      ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
+    } else if(icon==='mic'){
+      ctx.fillStyle='#d8d8dc';
+      ctx.beginPath(); ctx.ellipse(0,-14,9,12,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#3a3a40';
+      for(let gy=-20;gy<=-8;gy+=4){
+        for(let gx=-6;gx<=6;gx+=4){
+          if((gx*gx+((gy+14)*(gy+14))*0.6) < 70) ctx.fillRect(gx-1,gy-1,2,2);
+        }
+      }
+      ctx.fillStyle='#1c1c22';
+      ctx.fillRect(-3.2,-3,6.4,22);
+      ctx.fillStyle='#3a3a40';
+      ctx.fillRect(-3.2,4,6.4,3);
+      ctx.fillRect(-3.2,12,6.4,3);
+    } else if(icon==='guitar'){
+      ctx.fillStyle='#a5672f';
+      ctx.beginPath();
+      ctx.ellipse(-5,10,10,12,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(5,-2,7.5,9,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#3a2416';
+      ctx.beginPath(); ctx.ellipse(-5,10,4,5,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#2a1c10';
+      ctx.fillRect(1,-28,4,24);
+      ctx.fillStyle='#161311';
+      ctx.fillRect(0,-32,6,6);
+      ctx.strokeStyle='#e6d6ae'; ctx.lineWidth=0.8;
+      for(let i=0;i<4;i++){ ctx.beginPath(); ctx.moveTo(1,-27+i*6); ctx.lineTo(5,-27+i*6); ctx.stroke(); }
+    }
+
+    ctx.restore();
+  }
+
   function drawTrafficVehicle(seg, r){
     const s=seg.p1.screen;
     if(s.w<=1) return;
@@ -1251,6 +1389,11 @@
     const y = s.y;
     ctx.save();
     ctx.translate(x,y);
+    if(r.airborne){
+      const liftPhase = Math.sin(Math.min(1,r.airTime/Math.max(0.01,r.airDuration))*Math.PI);
+      ctx.translate(0, -liftPhase*u*0.55);
+      ctx.rotate(r.spinAngle||0);
+    }
 
     const scaleFactor = 1.3;
     
@@ -1535,12 +1678,18 @@
     const basePercent = percentRemaining(position, SEG_LEN);
     let x=0, dx=-(segments[baseIndex].curve*basePercent);
 
-    segments.forEach(s=>{ s.cars.length=0; });
+    segments.forEach(s=>{ s.cars.length=0; s.powerupItem=null; });
     const bucketNear = position-SEG_LEN*2, bucketFar = position+DRAW_DIST*SEG_LEN;
     traffic.forEach(r=>{
       if(r.z>bucketNear && r.z<bucketFar){
         const seg=findSegment(r.z);
         seg.cars.push(r);
+      }
+    });
+    powerups.forEach(p=>{
+      if(!p.taken && p.z>bucketNear && p.z<bucketFar){
+        const seg=findSegment(p.z);
+        seg.powerupItem = p;
       }
     });
 
@@ -1582,6 +1731,7 @@
         });
       }
       if(seg.sprite) drawRoadsideSprite(seg);
+      if(seg.powerupItem) drawPowerupIcon(seg, seg.powerupItem);
       if(seg.cars.length){
         seg.cars.forEach(r=>drawTrafficVehicle(seg, r));
       }
@@ -1643,7 +1793,12 @@
       target = target * slowFactor;
       rate = 5000;
     }
-    
+
+    if(turboT>0){
+      target = MAX_SPEED*1.42;
+      rate = 15000;
+    }
+
     if(speed<target) speed=Math.min(target, speed+rate*dt);
     else speed=Math.max(target, speed-rate*dt);
     if(Math.abs(playerX)>1){
@@ -1688,7 +1843,19 @@
     else document.getElementById('hudTime').parentElement.classList.remove('danger');
 
     traffic.forEach(r=>{
-      if(!r.finished){
+      if(r.airborne){
+        r.airTime += dt;
+        r.x += r.knockVX*dt;
+        r.knockVX *= 0.93;
+        r.spinAngle += r.knockSpin*dt;
+        if(r.airTime>=r.airDuration){
+          r.airborne=false;
+          r.spinAngle=0;
+          r.knockVX=0;
+          r.baseX = Math.max(-1.5, Math.min(1.5, r.x));
+          r.speed = r.origSpeed;
+        }
+      } else if(!r.finished){
         r.z += r.speed*dt;
         const weaveAmount = r.type==='truck' ? r.weave * 0.3 : r.weave;
         r.x = r.baseX + Math.sin((t+r.phase)*0.6)*weaveAmount;
@@ -1696,23 +1863,66 @@
       }
     });
 
+    // powerup pickups
+    for(const p of powerups){
+      if(p.taken) continue;
+      if(Math.abs(p.z-position)<SEG_LEN*0.85 && Math.abs(p.x-playerX)<0.4){
+        p.taken=true;
+        turboT = turboMaxT;
+        turboFlashT = 0.4;
+        score += 250;
+        showToast('⚡ ' + THEMES[selectedChar].powerName + '!', 'checkpoint');
+        const accentRGB = THEMES[selectedChar].accent;
+        for(let i=0;i<20;i++){
+          const angle = Math.random()*Math.PI*2;
+          crashParticles.push({
+            x:W/2+(Math.random()-0.5)*40, y:H*0.78+(Math.random()-0.5)*30,
+            vx:Math.cos(angle)*160, vy:Math.sin(angle)*160-60,
+            life:20+Math.random()*15, size:3+Math.random()*5, color:accentRGB
+          });
+        }
+      }
+    }
+    if(turboT>0){ turboT=Math.max(0,turboT-dt); }
+    if(turboFlashT>0) turboFlashT-=dt;
+
     if(collideCooldown>0) collideCooldown-=dt;
     if(collideCooldown<=0){
       for(const r of traffic){
+        if(r.airborne || r.finished) continue;
         if(r.z<position-SEG_LEN*3 || r.z>position+SEG_LEN*6) continue;
         if(Math.abs(r.z-position)<SEG_LEN*0.9 && Math.abs(r.x-playerX)<r.hitW){
+          const boosted = turboT>0;
           let slowFactor=0.4, floorMul=0.25, msg='💥 BUMP!';
           if(r.type==='truck'){ slowFactor=0.22; floorMul=0.15; msg='💢 SLAMMED A TRUCK!'; }
           else if(r.type==='oldcar'){ slowFactor=0.35; floorMul=0.2; msg='🚗 REAR-ENDED!'; }
           else { slowFactor=0.5; floorMul=0.32; msg='🏍️ CLIPPED!'; }
-          speed = Math.max(speed*slowFactor, MAX_SPEED*floorMul);
-          playerX += (playerX<r.x? -0.24:0.24);
-          shakeT = r.type==='truck'? 18:12;
+
+          if(boosted){
+            msg = '🔥 SMASHED THROUGH!';
+            shakeT = 10;
+            score += 80;
+          } else {
+            speed = Math.max(speed*slowFactor, MAX_SPEED*floorMul);
+            playerX += (playerX<r.x? -0.24:0.24);
+            shakeT = r.type==='truck'? 18:12;
+            totalCrashes++;
+            combo=0; comboFlashT=0.3;
+            score = Math.max(0, score-150);
+          }
           collideCooldown=0.9;
-          totalCrashes++;
-          combo=0; comboFlashT=0.3;
-          score = Math.max(0, score-150);
           showToast(msg, 'bump');
+
+          // bounce the vehicle itself out of the way
+          const dir = (r.x-playerX)>=0 ? 1 : -1;
+          const hitPower = boosted ? 1.6 : 1;
+          r.airborne = true;
+          r.airTime = 0;
+          r.airDuration = 1.1 + Math.random()*0.5;
+          r.knockVX = dir*(3.2+Math.random()*2.2)*hitPower;
+          r.knockSpin = dir*(6+Math.random()*6)*hitPower;
+          r.spinAngle = 0;
+          r.speed = r.origSpeed*0.15;
 
           const numObjects = r.type==='truck' ? 12 : (r.type==='oldcar' ? 8 : 5);
           const colors = r.type==='truck' ? ['#8a7a5a','#c9c2b0','#a02424','#ff8c3a'] :
