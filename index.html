@@ -17,10 +17,10 @@
     --ember:#ff8c3a;
     --glow:#ff5500;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--ink);font-family:'Oswald',sans-serif;color:var(--bone);overflow:hidden;width:100%;height:100%;touch-action:none;}
 
-  #wrap{position:relative;width:100%;max-width:920px;margin:0 auto;background:var(--ink);}
+  #wrap{position:relative;width:100%;max-width:920px;margin:0 auto;background:var(--ink);touch-action:none;}
 
   .checker{
     height:14px;width:100%;
@@ -29,8 +29,8 @@
     background-size:14px 14px;background-position:0 0,7px 7px;background-color:var(--bone);
   }
 
-  #gameArea{position:relative;width:100%;height:min(62vw,78vh,520px);overflow:hidden;background:#1a0f0f;}
-  canvas{display:block;width:100%;height:100%;}
+  #gameArea{position:relative;width:100%;height:min(62vw,78vh,520px);overflow:hidden;background:#1a0f0f;touch-action:none;}
+  canvas{display:block;width:100%;height:100%;touch-action:none;}
 
   #hud{position:absolute;top:8px;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
        padding:0 14px;font-weight:600;font-size:clamp(10px,2.1vw,15px);letter-spacing:1px;
@@ -82,8 +82,8 @@
   .toast.finish{color:#ffdd44;text-shadow:0 0 30px #ffaa00,0 2px 4px #000;font-size:clamp(24px,5vw,36px);}
 
   #touchZones{position:absolute;inset:0;display:flex;z-index:8;}
-  #touchZones .zone{flex:1;touch-action:none;}
-  #brakeBtn{position:absolute;bottom:14px;right:14px;width:56px;height:56px;border-radius:50%;
+  #touchZones .zone{flex:1;touch-action:none;-webkit-touch-callout:none;}
+  #brakeBtn{position:absolute;bottom:14px;right:14px;width:56px;height:56px;border-radius:50%;touch-action:none;-webkit-touch-callout:none;
             background:rgba(122,27,27,0.65);border:2px solid var(--bone-dark);color:var(--bone);
             font-family:'Oswald',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;
             z-index:9;display:flex;align-items:center;justify-content:center;text-align:center;user-select:none;
@@ -297,6 +297,15 @@
   }
   window.addEventListener('resize', resize);
   resize();
+
+  // Prevent iOS Safari zoom, selection, and callout on game area
+  const gameArea = document.getElementById('gameArea');
+  gameArea.addEventListener('touchstart', function(e){ e.preventDefault(); }, {passive:false});
+  gameArea.addEventListener('touchmove',  function(e){ e.preventDefault(); }, {passive:false});
+  gameArea.addEventListener('touchend',   function(e){ e.preventDefault(); }, {passive:false});
+  gameArea.addEventListener('gesturestart', function(e){ e.preventDefault(); });
+  gameArea.addEventListener('gesturechange', function(e){ e.preventDefault(); });
+  gameArea.addEventListener('gestureend', function(e){ e.preventDefault(); });
   if('ontouchstart' in window){ touchZones.classList.remove('hidden'); brakeBtn.classList.remove('hidden'); }
 
   // ---------------- pixel-art rider portraits (90s arcade select-screen style) ----------------
