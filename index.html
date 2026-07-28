@@ -298,11 +298,12 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // Prevent iOS Safari zoom, selection, and callout on game area
+  // Prevent iOS Safari zoom / selection ONLY on the gameplay surface (not overlay buttons)
+  canvas.addEventListener('touchstart', function(e){ e.preventDefault(); }, {passive:false});
+  canvas.addEventListener('touchmove',  function(e){ e.preventDefault(); }, {passive:false});
+  canvas.addEventListener('touchend',   function(e){ e.preventDefault(); }, {passive:false});
+  // Pinch-zoom block on the whole game area (doesn't affect clicks)
   const gameArea = document.getElementById('gameArea');
-  gameArea.addEventListener('touchstart', function(e){ e.preventDefault(); }, {passive:false});
-  gameArea.addEventListener('touchmove',  function(e){ e.preventDefault(); }, {passive:false});
-  gameArea.addEventListener('touchend',   function(e){ e.preventDefault(); }, {passive:false});
   gameArea.addEventListener('gesturestart', function(e){ e.preventDefault(); });
   gameArea.addEventListener('gesturechange', function(e){ e.preventDefault(); });
   gameArea.addEventListener('gestureend', function(e){ e.preventDefault(); });
