@@ -29,6 +29,13 @@
     background-size:14px 14px;background-position:0 0,7px 7px;background-color:var(--bone);
   }
 
+  #audioControls{position:absolute;top:-3px;right:6px;z-index:60;display:flex;gap:6px;pointer-events:all;}
+  .audioBtn{width:20px;height:20px;border-radius:50%;background:#161311;border:2px solid var(--bone-dark);
+            color:var(--bone);font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;
+            cursor:pointer;padding:0;box-shadow:0 2px 4px rgba(0,0,0,0.6);}
+  .audioBtn:active{transform:scale(0.9);}
+  .audioBtn.off{opacity:0.45;filter:grayscale(1);}
+
   #gameArea{position:relative;width:100%;height:min(62vw,78vh,520px);overflow:hidden;background:#1a0f0f;}
   canvas{display:block;width:100%;height:100%;}
 
@@ -126,10 +133,29 @@
 
   #charSelect{margin-top:10px;pointer-events:all;width:100%;max-width:860px;}
 
-  #homeScreen{display:flex;flex-direction:column;align-items:center;pointer-events:all;}
-  #heroArt{width:min(360px,84vw);max-height:44vh;object-fit:contain;display:block;
-           border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.7), 0 0 0 2px #0c0a08, 0 0 0 4px var(--blood);
-           margin-bottom:10px;}
+  #homeScreen{display:flex;align-items:center;justify-content:center;
+              pointer-events:all;max-width:100%;}
+
+  #cabinet{display:flex;flex-direction:column;align-items:center;width:min(480px,86vw);
+           background:linear-gradient(180deg,#2a1616,#161311);padding:12px;border-radius:16px;
+           border:3px solid #0a0808;box-shadow:0 16px 40px rgba(0,0,0,0.75), inset 0 0 22px rgba(0,0,0,0.5);}
+
+  #marquee{width:100%;text-align:center;font-family:'Metal Mania',cursive;font-weight:400;
+           font-size:clamp(22px,5.6vw,38px);letter-spacing:2px;padding:12px 8px 9px;
+           border-radius:11px 11px 4px 4px;margin-bottom:10px;
+           background:linear-gradient(180deg,#4a1a1a,#1c0a0a);color:var(--ember);
+           text-shadow:0 0 8px rgba(255,140,58,0.85),0 0 18px rgba(160,36,36,0.65);
+           border-bottom:2px solid #0a0808;box-shadow:inset 0 2px 10px rgba(255,170,100,0.18);}
+  #marquee .amp{color:var(--bone);}
+
+  #screenBezel{position:relative;width:100%;border-radius:8px;overflow:hidden;background:#000;
+               border:6px solid #0a0808;box-shadow:inset 0 0 26px rgba(0,0,0,0.85),0 0 0 2px #3a3a3a;}
+  #heroArt{width:100%;display:block;}
+  #scanlines{position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;
+             background:repeating-linear-gradient(to bottom,rgba(0,0,0,0.16) 0px,rgba(0,0,0,0.16) 1px,transparent 1px,transparent 3px);}
+  #screenBezel::after{content:'';position:absolute;left:0;right:0;bottom:0;height:30%;
+             background:linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0));pointer-events:none;z-index:1;}
+  #screenBezel .startBtn{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);z-index:2;margin-top:0;}
 
   button.startBtn.blink{animation:blinkStart 1s steps(1) infinite;}
   @keyframes blinkStart{ 0%,49%{opacity:1;} 50%,100%{opacity:0.35;} }
@@ -162,6 +188,10 @@
 <body>
 <div id="wrap">
   <div class="checker"></div>
+  <div id="audioControls">
+    <button id="sfxToggleBtn" class="audioBtn" title="Toggle sound effects">🔊</button>
+    <button id="musicToggleBtn" class="audioBtn" title="Toggle music">🎵</button>
+  </div>
 
   <div id="gameArea">
     <div id="hud">
@@ -194,12 +224,14 @@
 
     <div id="overlay">
       <div id="homeScreen">
-        <img id="heroArt" src="Rock_and_road.png" alt="Rock &amp; Road band on stage">
-        <h1 class="title">ROCK <span class="amp">&amp;</span> ROAD</h1>
-        <div class="subtitle">HIGHWAY TO THE CITY</div>
-        <div class="tagline">70s / 80s covers &nbsp;•&nbsp; biker highway racer</div>
-        <button class="startBtn blink" id="startHomeBtn">▶ START</button>
-        <div class="hint">arrows / wasd to drive &nbsp;·&nbsp; tap to play on mobile</div>
+        <div id="cabinet">
+          <div id="marquee">ROCK <span class="amp">&amp;</span> ROAD</div>
+          <div id="screenBezel">
+            <img id="heroArt" src="Rock_and_road.png" alt="Rock &amp; Road band on stage">
+            <div id="scanlines"></div>
+            <button class="startBtn blink" id="startHomeBtn">▶ START</button>
+          </div>
+        </div>
       </div>
 
       <div id="resultLine" class="hidden"></div>
@@ -262,6 +294,8 @@
   const zoneLeft = document.getElementById('zoneLeft');
   const zoneRight = document.getElementById('zoneRight');
   const brakeBtn = document.getElementById('brakeBtn');
+  const sfxToggleBtn = document.getElementById('sfxToggleBtn');
+  const musicToggleBtn = document.getElementById('musicToggleBtn');
 
   let W,H,DPR;
   function resize(){
@@ -290,6 +324,235 @@
 
   // ---------------- pixel-art rider portraits (90s arcade select-screen style) ----------------
   
+
+
+  // ---------------- audio manager ----------------
+  // SFX are fully synthesized (Web Audio API) — no external files needed.
+  // Background music looks for files the user drops in an "audio/" folder next to this
+  // HTML file. Missing files simply stay silent (no console errors, nothing breaks).
+  const GameAudio = (function(){
+    let ctx = null;
+    let sfxOn = true, musicOn = true;
+    let engine = null;       // continuous engine oscillator/noise rig
+    let brakeActive = false;
+    let musicEl = null;
+    let currentScene = null;
+    let crowdTimer = 0;
+
+    const MUSIC = {
+      menu:   ['audio/menu1.mp3','audio/menu2.mp3','audio/menu3.mp3'],
+      race:   ['audio/race1.mp3','audio/race2.mp3','audio/race3.mp3','audio/race4.mp3'],
+      finish: ['audio/finish1.mp3','audio/finish2.mp3']
+    };
+
+    function ensureCtx(){
+      if(!ctx){
+        try{ ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+        catch(e){ return null; }
+      }
+      if(ctx.state==='suspended') ctx.resume();
+      return ctx;
+    }
+
+    function noiseBuffer(c, duration){
+      const buf = c.createBuffer(1, Math.max(1,Math.floor(c.sampleRate*duration)), c.sampleRate);
+      const data = buf.getChannelData(0);
+      for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+      return buf;
+    }
+
+    function tone(freq, dur, type, gainVal, sweepTo, delay){
+      if(!sfxOn) return;
+      const c = ensureCtx(); if(!c) return;
+      const t0 = c.currentTime + (delay||0);
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = type||'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      if(sweepTo) osc.frequency.exponentialRampToValueAtTime(Math.max(1,sweepTo), t0+dur);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0002,gainVal||0.2), t0+0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+      osc.connect(gain); gain.connect(c.destination);
+      osc.start(t0); osc.stop(t0+dur+0.05);
+    }
+
+    function noiseBurst(dur, gainVal, filterFreq, filterType, delay){
+      if(!sfxOn) return;
+      const c = ensureCtx(); if(!c) return;
+      const t0 = c.currentTime + (delay||0);
+      const src = c.createBufferSource();
+      src.buffer = noiseBuffer(c, dur);
+      const filter = c.createBiquadFilter();
+      filter.type = filterType||'lowpass';
+      filter.frequency.value = filterFreq||1200;
+      const gain = c.createGain();
+      gain.gain.setValueAtTime(Math.max(0.0002,gainVal||0.3), t0);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+      src.connect(filter); filter.connect(gain); gain.connect(c.destination);
+      src.start(t0); src.stop(t0+dur+0.05);
+    }
+
+    // ---- one-shot SFX ----
+    function uiClick(){ tone(520,0.07,'square',0.2); }
+
+    function crash(kind){
+      // kind: 'light' | 'medium' | 'heavy'
+      const g = kind==='heavy'?0.68:kind==='medium'?0.55:0.4;
+      noiseBurst(0.32, g, kind==='heavy'?280:600, 'lowpass');
+      tone(kind==='heavy'?85:140, 0.22, 'square', g*0.6, 35);
+    }
+
+    function smashThrough(){
+      noiseBurst(0.22, 0.44, 700, 'lowpass');
+      tone(220,0.18,'sawtooth',0.28,440);
+    }
+
+    function checkpoint(){
+      tone(660,0.12,'triangle',0.32);
+      tone(880,0.16,'triangle',0.32,null,0.09);
+      tone(1180,0.2,'triangle',0.3,null,0.18);
+    }
+
+    function turbo(){
+      if(!sfxOn) return;
+      const c = ensureCtx(); if(!c) return;
+      const t0 = c.currentTime;
+      const src = c.createBufferSource();
+      src.buffer = noiseBuffer(c, 0.6);
+      const filter = c.createBiquadFilter();
+      filter.type='bandpass';
+      filter.frequency.setValueAtTime(300, t0);
+      filter.frequency.exponentialRampToValueAtTime(4200, t0+0.5);
+      filter.Q.value = 0.7;
+      const gain = c.createGain();
+      gain.gain.setValueAtTime(0.46, t0);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.6);
+      src.connect(filter); filter.connect(gain); gain.connect(c.destination);
+      src.start(t0); src.stop(t0+0.65);
+      tone(520,0.1,'sawtooth',0.24,null,0.08);
+      tone(780,0.14,'sawtooth',0.22,null,0.16);
+    }
+
+    function brakeStart(){ noiseBurst(0.4, 0.24, 2600, 'highpass'); }
+
+    function crowdBlip(vol){ noiseBurst(0.5+Math.random()*0.3, vol||0.18, 1800+Math.random()*1200, 'bandpass'); }
+
+    function cheerBurst(){
+      for(let i=0;i<5;i++) noiseBurst(0.7+Math.random()*0.6, 0.32, 1700+Math.random()*1500, 'bandpass', i*0.08);
+      tone(523,0.2,'triangle',0.26,null,0.05);
+      tone(659,0.22,'triangle',0.26,null,0.18);
+      tone(784,0.3,'triangle',0.28,null,0.32);
+    }
+
+    function failTone(){
+      tone(260,0.5,'sawtooth',0.3,90);
+    }
+
+    // ---- continuous engine loop ----
+    function startEngine(){
+      const c = ensureCtx(); if(!c || engine) return;
+      const osc1 = c.createOscillator(); osc1.type='sawtooth'; osc1.frequency.value=55;
+      const osc2 = c.createOscillator(); osc2.type='square'; osc2.frequency.value=82;
+      const noiseSrc = c.createBufferSource();
+      const nbuf = noiseBuffer(c,2); nbuf.loop=true; noiseSrc.buffer=nbuf; noiseSrc.loop=true;
+      const noiseFilter = c.createBiquadFilter(); noiseFilter.type='lowpass'; noiseFilter.frequency.value=500;
+      const gain = c.createGain(); gain.gain.value=0.0001;
+      osc1.connect(gain); osc2.connect(gain);
+      noiseSrc.connect(noiseFilter); noiseFilter.connect(gain);
+      gain.connect(c.destination);
+      osc1.start(); osc2.start(); noiseSrc.start();
+      engine = {osc1,osc2,noiseSrc,noiseFilter,gain};
+    }
+
+    function updateEngine(speedPercent, offRoad){
+      if(!engine) return;
+      const c = ensureCtx(); if(!c) return;
+      const sp = Math.max(0,Math.min(1.4,speedPercent||0));
+      const baseFreq = 50 + sp*150;
+      engine.osc1.frequency.setTargetAtTime(baseFreq, c.currentTime, 0.06);
+      engine.osc2.frequency.setTargetAtTime(baseFreq*1.5 + (offRoad?18:0), c.currentTime, 0.06);
+      engine.noiseFilter.frequency.setTargetAtTime(350+sp*2000, c.currentTime, 0.1);
+      const targetGain = sfxOn ? (0.022 + sp*0.05) : 0.0001;
+      engine.gain.gain.setTargetAtTime(Math.max(0.0001,targetGain), c.currentTime, 0.12);
+    }
+
+    function stopEngine(){
+      if(!engine) return;
+      const c = ensureCtx();
+      try{
+        if(c){
+          engine.gain.gain.cancelScheduledValues(c.currentTime);
+          engine.gain.gain.setValueAtTime(0.0001, c.currentTime);
+        }
+        engine.osc1.stop(); engine.osc2.stop(); engine.noiseSrc.stop();
+      }catch(e){}
+      engine = null;
+    }
+
+    function tickCrowd(dt, progress){
+      if(progress < 0.82) return;
+      crowdTimer -= dt;
+      if(crowdTimer <= 0){
+        const closeness = (progress-0.82)/0.18;
+        crowdBlip(0.06 + closeness*0.14);
+        crowdTimer = 1.3 - closeness*0.8;
+      }
+    }
+
+    // ---- scene background music ----
+    // Tries each track in the scene's playlist (shuffled) until one actually loads,
+    // so a missing/misnamed file doesn't just leave the scene silent.
+    function playSceneMusic(scene){
+      currentScene = scene;
+      if(musicEl){ try{ musicEl.pause(); }catch(e){} musicEl=null; }
+      if(!musicOn) return;
+      const list = (MUSIC[scene]||[]).slice();
+      for(let i=list.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [list[i],list[j]]=[list[j],list[i]]; }
+      if(!list.length) return;
+      tryNextTrack(scene, list, 0);
+    }
+
+    function tryNextTrack(scene, list, idx){
+      if(idx>=list.length) return; // none of this scene's files are available yet
+      const el = new Audio(list[idx]);
+      el.loop = true;
+      el.volume = 0.45;
+      let moved = false;
+      el.addEventListener('error', ()=>{
+        if(moved || currentScene!==scene) return;
+        moved = true;
+        tryNextTrack(scene, list, idx+1);
+      });
+      el.play().then(()=>{
+        if(currentScene===scene) musicEl = el; else { try{el.pause();}catch(e){} }
+      }).catch(()=>{
+        if(moved || currentScene!==scene) return;
+        moved = true;
+        tryNextTrack(scene, list, idx+1);
+      });
+    }
+
+    function setSfxOn(on){
+      sfxOn = on;
+      sfxToggleBtn.textContent = on ? '🔊' : '🔇';
+      sfxToggleBtn.classList.toggle('off', !on);
+    }
+    function setMusicOn(on){
+      musicOn = on;
+      musicToggleBtn.textContent = on ? '🎵' : '🔇';
+      musicToggleBtn.classList.toggle('off', !on);
+      if(!on){ if(musicEl){ try{musicEl.pause();}catch(e){} } }
+      else if(currentScene){ playSceneMusic(currentScene); }
+    }
+
+    return {
+      ensureCtx, uiClick, crash, smashThrough, checkpoint, turbo, brakeStart,
+      cheerBurst, failTone, startEngine, updateEngine, stopEngine, tickCrowd,
+      playSceneMusic, setSfxOn, setMusicOn,
+      isSfxOn(){ return sfxOn; }, isMusicOn(){ return musicOn; }
+    };
+  })();
 
 
   // ---------------- track construction ----------------
@@ -403,6 +666,7 @@
   let position=0, speed=0, playerX=0;
   let timeLeft=75, bestTime=null;
   let lastQuarter=0, collideCooldown=0, shakeT=0, boostParticles=[], crashParticles=[], flyingObjects=[], finishParticles=[];
+  let brakeWasActive=false;
   let toasts=[];
   let traffic=[];
   let totalCrashes=0;
@@ -412,7 +676,7 @@
     largo:     { jacket:'#161311', trim:'#d9c9a3', patch:'#a02424', accent:'#c4602c', name:'LARGO', icon:'leaf',  powerName:'HERBAL BOOST', hair:'#2a2018', hairStyle:'curly' },
     cesar:     { jacket:'#12181f', trim:'#cfe0ec', patch:'#1a4a7a', accent:'#3a8fd8', name:'CESAR', icon:'cymbal', powerName:'CYMBAL CRASH', hair:'#5a3a22', hairStyle:'short' },
     kathy:     { jacket:'#1c1015', trim:'#f0d0e2', patch:'#7a1a5a', accent:'#e0459a', name:'KATHY', icon:'mic',    powerName:'MIC DROP', hair:'#c0392b', hairStyle:'long' },
-    alejandro: { jacket:'#201a10', trim:'#e6d6ae', patch:'#7a5210', accent:'#e0a030', name:'ALEJANDRO', icon:'guitar', powerName:'SOLO BLAST', hair:'#f2f2ee', hairStyle:'cap' }
+    alejandro: { jacket:'#eee7d6', trim:'#e6d6ae', patch:'#7a5210', accent:'#e0a030', name:'ALEJANDRO', icon:'guitar', powerName:'SOLO BLAST', hair:'#171310', hairStyle:'cap' }
   };
   let selectedChar = 'largo';
   let powerups=[];
@@ -511,13 +775,21 @@
   }
 
   // ---------------- input ----------------
+  sfxToggleBtn.addEventListener('click', ()=>{ GameAudio.ensureCtx(); GameAudio.setSfxOn(!GameAudio.isSfxOn()); });
+  musicToggleBtn.addEventListener('click', ()=>{ GameAudio.ensureCtx(); GameAudio.setMusicOn(!GameAudio.isMusicOn()); });
+
   document.getElementById('startHomeBtn').addEventListener('click', ()=>{
+    GameAudio.ensureCtx();
+    GameAudio.uiClick();
+    GameAudio.playSceneMusic('menu');
     document.getElementById('homeScreen').classList.add('hidden');
     document.getElementById('charSelect').classList.remove('hidden');
   });
 
   document.querySelectorAll('.charCard').forEach(card=>{
     card.addEventListener('click', ()=>{
+      GameAudio.ensureCtx();
+      GameAudio.uiClick();
       selectedChar = card.dataset.char;
       document.querySelectorAll('.charCard').forEach(c=>c.classList.remove('picked'));
       card.classList.add('picked');
@@ -533,6 +805,9 @@
     if(e.code==='Space' || e.code==='Enter'){
       const homeVisible = !document.getElementById('homeScreen').classList.contains('hidden');
       if(homeVisible){
+        GameAudio.ensureCtx();
+        GameAudio.uiClick();
+        GameAudio.playSceneMusic('menu');
         document.getElementById('homeScreen').classList.add('hidden');
         document.getElementById('charSelect').classList.remove('hidden');
       } else if(!running && !gameEnded){
@@ -558,6 +833,8 @@
   bindHold(zoneRight, ()=>keys.right=true, ()=>keys.right=false);
   bindHold(brakeBtn, ()=>keys.down=true, ()=>keys.down=false);
   startBtn.addEventListener('click', function(){
+    GameAudio.ensureCtx();
+    GameAudio.uiClick();
     if(finishScreenShown){
       returnToMenu();
     } else {
@@ -566,6 +843,8 @@
   });
 
   function returnToMenu(){
+    GameAudio.stopEngine();
+    GameAudio.playSceneMusic('menu');
     finishScreenShown=false;
     gameEnded=false;
     celebrationActive=false;
@@ -587,6 +866,8 @@
 
   function startGame(){
     initRace();
+    GameAudio.playSceneMusic('race');
+    GameAudio.startEngine();
     overlay.classList.add('hidden');
     resultLine.classList.add('hidden');
     resultSub.classList.add('hidden');
@@ -600,6 +881,9 @@
   function endRace(win){
     running=false;
     gameEnded=true;
+    GameAudio.stopEngine();
+    GameAudio.playSceneMusic('finish');
+    if(win) GameAudio.cheerBurst(); else GameAudio.failTone();
     if(animId){ cancelAnimationFrame(animId); animId=null; }
     finishTime = raceClock();
     document.getElementById('charSelect').classList.add('hidden');
@@ -2034,6 +2318,12 @@
     }
 
     const speedPercent = speed/MAX_SPEED;
+    const offRoad = Math.abs(playerX)>1;
+    GameAudio.updateEngine(speedPercent, offRoad);
+    if(keys.down && speedPercent>0.15 && !brakeWasActive){ GameAudio.brakeStart(); }
+    brakeWasActive = keys.down;
+    GameAudio.tickCrowd(dt, position/TRACK_LEN);
+
     position += speed*dt;
     if(position>=TRACK_LEN){ 
       position=TRACK_LEN; 
@@ -2058,6 +2348,7 @@
       timeLeft += 14;
       score += 500;
       showToast('⛽ CHECKPOINT +14s', 'checkpoint');
+      GameAudio.checkpoint();
     }
 
     score += speed*dt*0.012;
@@ -2102,6 +2393,7 @@
         turboFlashT = 0.4;
         score += 250;
         showToast('⚡ ' + THEMES[selectedChar].powerName + '!', 'checkpoint');
+        GameAudio.turbo();
         const accentRGB = THEMES[selectedChar].accent;
         for(let i=0;i<20;i++){
           const angle = Math.random()*Math.PI*2;
@@ -2132,6 +2424,7 @@
             msg = '🔥 SMASHED THROUGH!';
             shakeT = 10;
             score += 80;
+            GameAudio.smashThrough();
           } else {
             speed = Math.max(speed*slowFactor, MAX_SPEED*floorMul);
             playerX += (playerX<r.x? -0.24:0.24);
@@ -2139,6 +2432,7 @@
             totalCrashes++;
             combo=0; comboFlashT=0.3;
             score = Math.max(0, score-150);
+            GameAudio.crash(r.type==='truck'?'heavy':(r.type==='oldcar'?'medium':'light'));
           }
           collideCooldown=0.9;
           showToast(msg, 'bump');
