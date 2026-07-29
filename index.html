@@ -17,10 +17,10 @@
     --ember:#ff8c3a;
     --glow:#ff5500;
   }
-  *{box-sizing:border-box;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+  *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--ink);font-family:'Oswald',sans-serif;color:var(--bone);overflow:hidden;width:100%;height:100%;touch-action:none;}
 
-  #wrap{position:relative;width:100%;max-width:920px;margin:0 auto;background:var(--ink);touch-action:none;}
+  #wrap{position:relative;width:100%;max-width:920px;margin:0 auto;background:var(--ink);}
 
   .checker{
     height:14px;width:100%;
@@ -29,8 +29,8 @@
     background-size:14px 14px;background-position:0 0,7px 7px;background-color:var(--bone);
   }
 
-  #gameArea{position:relative;width:100%;height:min(62vw,78vh,520px);overflow:hidden;background:#1a0f0f;touch-action:none;}
-  canvas{display:block;width:100%;height:100%;touch-action:none;}
+  #gameArea{position:relative;width:100%;height:min(62vw,78vh,520px);overflow:hidden;background:#1a0f0f;}
+  canvas{display:block;width:100%;height:100%;}
 
   #hud{position:absolute;top:8px;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
        padding:0 14px;font-weight:600;font-size:clamp(10px,2.1vw,15px);letter-spacing:1px;
@@ -82,8 +82,8 @@
   .toast.finish{color:#ffdd44;text-shadow:0 0 30px #ffaa00,0 2px 4px #000;font-size:clamp(24px,5vw,36px);}
 
   #touchZones{position:absolute;inset:0;display:flex;z-index:8;}
-  #touchZones .zone{flex:1;touch-action:none;-webkit-touch-callout:none;}
-  #brakeBtn{position:absolute;bottom:14px;right:14px;width:56px;height:56px;border-radius:50%;touch-action:none;-webkit-touch-callout:none;
+  #touchZones .zone{flex:1;touch-action:none;}
+  #brakeBtn{position:absolute;bottom:14px;right:14px;width:56px;height:56px;border-radius:50%;
             background:rgba(122,27,27,0.65);border:2px solid var(--bone-dark);color:var(--bone);
             font-family:'Oswald',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;
             z-index:9;display:flex;align-items:center;justify-content:center;text-align:center;user-select:none;
@@ -127,8 +127,9 @@
   #charSelect{margin-top:10px;pointer-events:all;width:100%;max-width:860px;}
 
   #homeScreen{display:flex;flex-direction:column;align-items:center;pointer-events:all;}
-  #logoBadge{position:relative;width:min(160px,32vw);margin-bottom:4px;}
-  #logoBadge #skullSvg{width:100%;display:block;filter:drop-shadow(0 4px 10px #000);}
+  #heroArt{width:min(360px,84vw);max-height:44vh;object-fit:contain;display:block;
+           border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.7), 0 0 0 2px #0c0a08, 0 0 0 4px var(--blood);
+           margin-bottom:10px;}
 
   button.startBtn.blink{animation:blinkStart 1s steps(1) infinite;}
   @keyframes blinkStart{ 0%,49%{opacity:1;} 50%,100%{opacity:0.35;} }
@@ -193,19 +194,7 @@
 
     <div id="overlay">
       <div id="homeScreen">
-        <div id="logoBadge">
-          <svg id="skullSvg" viewBox="0 0 100 100">
-            <g fill="#d9c9a3" stroke="#161311" stroke-width="2">
-              <path d="M50 6 C25 6 14 26 14 42 C14 54 20 62 26 68 L26 80 C26 85 30 88 34 88 L34 78 L40 78 L40 88 L46 88 L46 78 L54 78 L54 88 L60 88 L60 78 L66 88 C70 88 74 85 74 80 L74 68 C80 62 86 54 86 42 C86 26 75 6 50 6 Z"/>
-              <ellipse cx="36" cy="42" rx="8" ry="10" fill="#161311" stroke="none"/>
-              <ellipse cx="64" cy="42" rx="8" ry="10" fill="#161311" stroke="none"/>
-              <path d="M50 44 L46 58 L54 58 Z" fill="#161311" stroke="none"/>
-              <path d="M33 66 L67 66 L64 74 L36 74 Z" fill="#161311" stroke="none"/>
-              <circle cx="36" cy="42" r="2" fill="#d9c9a3" stroke="none"/>
-              <circle cx="64" cy="42" r="2" fill="#d9c9a3" stroke="none"/>
-            </g>
-          </svg>
-        </div>
+        <img id="heroArt" src="Rock_and_road.png" alt="Rock &amp; Road band on stage">
         <h1 class="title">ROCK <span class="amp">&amp;</span> ROAD</h1>
         <div class="subtitle">HIGHWAY TO THE CITY</div>
         <div class="tagline">70s / 80s covers &nbsp;•&nbsp; biker highway racer</div>
@@ -297,16 +286,6 @@
   }
   window.addEventListener('resize', resize);
   resize();
-
-  // Prevent iOS Safari zoom / selection ONLY on the gameplay surface (not overlay buttons)
-  canvas.addEventListener('touchstart', function(e){ e.preventDefault(); }, {passive:false});
-  canvas.addEventListener('touchmove',  function(e){ e.preventDefault(); }, {passive:false});
-  canvas.addEventListener('touchend',   function(e){ e.preventDefault(); }, {passive:false});
-  // Pinch-zoom block on the whole game area (doesn't affect clicks)
-  const gameArea = document.getElementById('gameArea');
-  gameArea.addEventListener('gesturestart', function(e){ e.preventDefault(); });
-  gameArea.addEventListener('gesturechange', function(e){ e.preventDefault(); });
-  gameArea.addEventListener('gestureend', function(e){ e.preventDefault(); });
   if('ontouchstart' in window){ touchZones.classList.remove('hidden'); brakeBtn.classList.remove('hidden'); }
 
   // ---------------- pixel-art rider portraits (90s arcade select-screen style) ----------------
@@ -430,10 +409,10 @@
   let score=0, combo=0, comboFlashT=0;
 
   const THEMES = {
-    largo:     { jacket:'#161311', trim:'#d9c9a3', patch:'#a02424', accent:'#c4602c', name:'LARGO', icon:'leaf',  powerName:'HERBAL BOOST' },
-    cesar:     { jacket:'#12181f', trim:'#cfe0ec', patch:'#1a4a7a', accent:'#3a8fd8', name:'CESAR', icon:'cymbal', powerName:'CYMBAL CRASH' },
-    kathy:     { jacket:'#1c1015', trim:'#f0d0e2', patch:'#7a1a5a', accent:'#e0459a', name:'KATHY', icon:'mic',    powerName:'MIC DROP' },
-    alejandro: { jacket:'#201a10', trim:'#e6d6ae', patch:'#7a5210', accent:'#e0a030', name:'ALEJANDRO', icon:'guitar', powerName:'SOLO BLAST' }
+    largo:     { jacket:'#161311', trim:'#d9c9a3', patch:'#a02424', accent:'#c4602c', name:'LARGO', icon:'leaf',  powerName:'HERBAL BOOST', hair:'#2a2018', hairStyle:'curly' },
+    cesar:     { jacket:'#12181f', trim:'#cfe0ec', patch:'#1a4a7a', accent:'#3a8fd8', name:'CESAR', icon:'cymbal', powerName:'CYMBAL CRASH', hair:'#5a3a22', hairStyle:'short' },
+    kathy:     { jacket:'#1c1015', trim:'#f0d0e2', patch:'#7a1a5a', accent:'#e0459a', name:'KATHY', icon:'mic',    powerName:'MIC DROP', hair:'#c0392b', hairStyle:'long' },
+    alejandro: { jacket:'#201a10', trim:'#e6d6ae', patch:'#7a5210', accent:'#e0a030', name:'ALEJANDRO', icon:'guitar', powerName:'SOLO BLAST', hair:'#f2f2ee', hairStyle:'cap' }
   };
   let selectedChar = 'largo';
   let powerups=[];
@@ -1018,20 +997,47 @@
   ctx.beginPath(); ctx.arc(-42,-52,3,0,Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(42,-52,3,0,Math.PI*2); ctx.fill();
 
-  // === HELMET ===
-  ctx.fillStyle='#d9c9a3';
-  ctx.fillRect(-5,-56,10,8);
-  ctx.fillStyle='#2a2a2a';
-  ctx.beginPath(); ctx.arc(0,-72,17,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#3a3a3a';
-  ctx.beginPath(); ctx.arc(0,-78,13,Math.PI,0); ctx.fill();
-  ctx.fillStyle=theme.accent;
-  ctx.fillRect(-4,-88,8,12);
-  ctx.fillRect(-3,-90,6,4);
-  ctx.fillStyle='#1a1a1a';
-  ctx.beginPath(); ctx.ellipse(0,-70,13,6,0,0,Math.PI); ctx.fill();
-  ctx.fillStyle='rgba(100,180,255,0.25)';
-  ctx.beginPath(); ctx.ellipse(-4,-72,4,2,-0.2,0,Math.PI); ctx.fill();
+  // === HEAD / HAIR (bare head, no helmet) ===
+  ctx.fillStyle='#c99a6a';
+  ctx.fillRect(-5,-54,10,8);
+
+  if(theme.hairStyle==='curly'){
+    ctx.fillStyle=theme.hair;
+    ctx.beginPath(); ctx.arc(0,-72,17,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-13,-66,10,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(13,-66,10,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-14,-54,9,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(14,-54,9,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=shadeHex(theme.hair,-16);
+    ctx.beginPath(); ctx.arc(-9,-76,6,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(10,-62,5,0,Math.PI*2); ctx.fill();
+  } else if(theme.hairStyle==='short'){
+    ctx.fillStyle=theme.hair;
+    ctx.beginPath(); ctx.arc(0,-71,15,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=shadeHex(theme.hair,-14);
+    ctx.beginPath(); ctx.arc(0,-78,12,Math.PI,0); ctx.fill();
+    ctx.fillStyle='#c99a6a';
+    ctx.beginPath(); ctx.ellipse(0,-58,7,4,0,0,Math.PI); ctx.fill();
+  } else if(theme.hairStyle==='long'){
+    ctx.fillStyle=theme.hair;
+    ctx.beginPath(); ctx.arc(0,-72,14,0,Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-13,-64); ctx.quadraticCurveTo(-19,-36,-13,-8);
+    ctx.lineTo(-5,-8); ctx.quadraticCurveTo(-11,-36,-6,-62); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(13,-64); ctx.quadraticCurveTo(19,-36,13,-8);
+    ctx.lineTo(5,-8); ctx.quadraticCurveTo(11,-36,6,-62); ctx.closePath(); ctx.fill();
+  } else if(theme.hairStyle==='cap'){
+    ctx.fillStyle='#3a2a1a';
+    ctx.fillRect(-9,-58,4,6); ctx.fillRect(5,-58,4,6);
+    ctx.fillStyle=theme.hair;
+    ctx.beginPath(); ctx.arc(0,-74,16,Math.PI,0); ctx.fill();
+    ctx.fillRect(-16,-74,32,13);
+    ctx.fillStyle=shadeHex(theme.hair,-18);
+    ctx.beginPath(); ctx.ellipse(0,-58,15,4,0,0,Math.PI); ctx.fill();
+    ctx.fillStyle=theme.accent;
+    ctx.beginPath(); ctx.arc(0,-87,2.5,0,Math.PI*2); ctx.fill();
+  }
 
   ctx.restore();
 }
@@ -1277,20 +1283,62 @@
   ctx.beginPath(); ctx.arc(-46,-54,3,0,Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(46,-54,3,0,Math.PI*2); ctx.fill();
 
-  // === HELMET ===
-  ctx.fillStyle='#d9c9a3';
-  ctx.fillRect(-6,-60,12,10);
-  ctx.fillStyle='#2a2a2a';
-  ctx.beginPath(); ctx.arc(0,-78,19,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#3a3a3a';
-  ctx.beginPath(); ctx.arc(0,-84,15,Math.PI,0); ctx.fill();
-  ctx.fillStyle=theme.accent;
-  ctx.fillRect(-5,-94,10,14);
-  ctx.fillRect(-4,-96,8,4);
-  ctx.fillStyle='#1a1a1a';
-  ctx.beginPath(); ctx.ellipse(0,-76,14,7,0,0,Math.PI); ctx.fill();
-  ctx.fillStyle='rgba(100,180,255,0.25)';
-  ctx.beginPath(); ctx.ellipse(-5,-78,5,2.5,-0.2,0,Math.PI); ctx.fill();
+  // === HEAD / HAIR (bare head, no helmet — matches the reference photo) ===
+  ctx.fillStyle='#c99a6a';
+  ctx.fillRect(-6,-62,12,14);
+  ctx.fillStyle='#b8875a';
+  ctx.beginPath(); ctx.ellipse(0,-64,7,4,0,0,Math.PI*2); ctx.fill();
+
+  if(theme.hairStyle==='curly'){
+    // big voluminous curly mass, dark
+    ctx.fillStyle=theme.hair;
+    ctx.beginPath(); ctx.arc(0,-80,19,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-15,-74,11,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(15,-74,11,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-16,-60,10,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(16,-60,10,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-9,-48,8,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(9,-48,8,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=shadeHex(theme.hair,-16);
+    ctx.beginPath(); ctx.arc(-10,-84,7,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(12,-70,6,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-14,-56,5,0,Math.PI*2); ctx.fill();
+  } else if(theme.hairStyle==='short'){
+    ctx.fillStyle=theme.hair;
+    ctx.beginPath(); ctx.arc(0,-79,17,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=shadeHex(theme.hair,-14);
+    ctx.beginPath(); ctx.arc(0,-86,14,Math.PI,0); ctx.fill();
+    // fade to skin at the nape
+    ctx.fillStyle='#c99a6a';
+    ctx.beginPath(); ctx.ellipse(0,-64,8,5,0,0,Math.PI); ctx.fill();
+  } else if(theme.hairStyle==='long'){
+    ctx.fillStyle=theme.hair;
+    ctx.beginPath(); ctx.arc(0,-80,16,0,Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-15,-72); ctx.quadraticCurveTo(-22,-40,-15,-6);
+    ctx.lineTo(-6,-6); ctx.quadraticCurveTo(-13,-40,-7,-70); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(15,-72); ctx.quadraticCurveTo(22,-40,15,-6);
+    ctx.lineTo(6,-6); ctx.quadraticCurveTo(13,-40,7,-70); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=shadeHex(theme.hair,-16);
+    ctx.beginPath();
+    ctx.moveTo(-15,-72); ctx.quadraticCurveTo(-20,-44,-14,-16);
+    ctx.lineTo(-11,-16); ctx.quadraticCurveTo(-16,-44,-11,-70); ctx.closePath(); ctx.fill();
+  } else if(theme.hairStyle==='cap'){
+    // a little hair peeking out at the nape first
+    ctx.fillStyle='#3a2a1a';
+    ctx.fillRect(-11,-64,4,7); ctx.fillRect(7,-64,4,7);
+    // white ball cap, worn forward (brim toward the front of the bike)
+    ctx.fillStyle=theme.hair;
+    ctx.beginPath(); ctx.arc(0,-82,18,Math.PI,0); ctx.fill();
+    ctx.fillRect(-18,-82,36,15);
+    ctx.fillStyle=shadeHex(theme.hair,-18);
+    ctx.beginPath(); ctx.ellipse(0,-64,17,5,0,0,Math.PI); ctx.fill();
+    ctx.fillStyle=theme.accent;
+    ctx.beginPath(); ctx.arc(0,-96,3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#c9c2b0';
+    ctx.fillRect(-2,-69,4,3);
+  }
 
   ctx.restore();
 }
@@ -1459,6 +1507,13 @@
     const v = parseInt(hex.slice(1),16);
     const r=(v>>16)&255, g=(v>>8)&255, b=v&255;
     return 'rgba('+r+','+g+','+b+','+a+')';
+  }
+
+  function shadeHex(hex, amt){
+    const v = parseInt(hex.slice(1),16);
+    let r=(v>>16)&255, g=(v>>8)&255, b=v&255;
+    r=Math.max(0,Math.min(255,r+amt)); g=Math.max(0,Math.min(255,g+amt)); b=Math.max(0,Math.min(255,b+amt));
+    return '#'+[r,g,b].map(c=>c.toString(16).padStart(2,'0')).join('');
   }
 
   function drawPowerupIcon(seg, p){
